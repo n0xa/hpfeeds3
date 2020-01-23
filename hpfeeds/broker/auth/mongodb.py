@@ -1,5 +1,5 @@
 import pymongo
-
+import logging
 
 class Authenticator(object):
 
@@ -17,7 +17,7 @@ class Authenticator(object):
         pubchans = res['publish']
         subchans = res['subscribe']
         ident = ident
-        owner = res['owner']
+        owner = res.get('owner', '')
         secret = res['secret']
 
         return dict(

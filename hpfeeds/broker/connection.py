@@ -182,7 +182,6 @@ class Connection(BaseProtocol):
             self.error(f'Authkey not allowed to pub here. ident={ident}, chan={chan}')
             self.transport.close()
             return
-
         self.server.publish(self, chan, payload)
 
     def on_subscribe(self, ident, chan):
