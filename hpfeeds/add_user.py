@@ -1,5 +1,6 @@
 import argparse
 import pymongo
+import uuid
 
 
 def handle_list(arg):
@@ -28,6 +29,9 @@ def main():
     secret = args.secret
     publish = handle_list(args.publish)
     subscribe = handle_list(args.subscribe)
+
+    if not secret:
+        secret = str(uuid.uuid4()).replace("-", "")
 
     rec = {
         "owner": owner,

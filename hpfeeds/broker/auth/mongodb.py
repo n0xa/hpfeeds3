@@ -1,5 +1,5 @@
 import pymongo
-import logging
+
 
 class Authenticator(object):
 
