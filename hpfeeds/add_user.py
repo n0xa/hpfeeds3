@@ -10,6 +10,24 @@ def handle_list(arg):
         return []
 
 
+def create_user(host, port, owner, ident, secret, publish, subscribe):
+    publish_list = handle_list(publish)
+    subscribe_list = handle_list(subscribe)
+    rec = {
+        "owner": owner,
+        "ident": ident,
+        "secret": secret,
+        "publish": publish_list,
+        "subscribe": subscribe_list
+    }
+
+    client = pymongo.MongoClient(host=host, port=port)
+    res = client.hpfeeds.auth_key.update({"identifier": ident}, {"$set": rec}, upsert=True)
+    client.fsync()
+    client.close()
+    return res, rec
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--mongodb-host", required=True)
@@ -26,25 +44,15 @@ def main():
 
     owner = args.owner
     ident = args.ident
-    publish = handle_list(args.publish)
-    subscribe = handle_list(args.subscribe)
+    publish = args.publish
+    subscribe = args.subscribe
     if args.secret:
         secret = args.secret
     else:
         secret = str(uuid.uuid4()).replace("-", "")
 
-    rec = {
-        "owner": owner,
-        "ident": ident,
-        "secret": secret,
-        "publish": publish,
-        "subscribe": subscribe
-    }
-
-    client = pymongo.MongoClient(host=host, port=port)
-    res = client.hpfeeds.auth_key.update({"identifier": ident}, {"$set": rec}, upsert=True)
-    client.fsync()
-    client.close()
+    res, rec = create_user(host=host, port=port, owner=owner, ident=ident,
+                           secret=secret, publish=publish, subscribe=subscribe)
 
     if res['updatedExisting']:
         print("updated %s" % rec)
