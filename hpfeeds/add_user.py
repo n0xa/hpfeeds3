@@ -16,7 +16,7 @@ def main():
     parser.add_argument("--mongodb-port", required=True, type=int)
     parser.add_argument("--owner", required=True)
     parser.add_argument("--ident", required=True)
-    parser.add_argument("--secret", required=True)
+    parser.add_argument("--secret", required=False, default="")
     parser.add_argument("--publish", required=True)
     parser.add_argument("--subscribe", required=True)
     args = parser.parse_args()
@@ -26,11 +26,11 @@ def main():
 
     owner = args.owner
     ident = args.ident
-    secret = args.secret
     publish = handle_list(args.publish)
     subscribe = handle_list(args.subscribe)
-
-    if not secret:
+    if args.secret:
+        secret = args.secret
+    else:
         secret = str(uuid.uuid4()).replace("-", "")
 
     rec = {
