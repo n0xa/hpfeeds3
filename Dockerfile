@@ -1,4 +1,5 @@
 FROM alpine:3.7
+# hadolint ignore=DL3018
 RUN apk --no-cache add python3
 RUN python3 -m venv /app
 
