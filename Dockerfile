@@ -4,7 +4,7 @@ RUN apk --no-cache add python3
 RUN python3 -m venv /app
 
 COPY requirements.txt /requirements.txt
-RUN /app/bin/pip install -r requirements.txt
+RUN python3 -m pip install -r requirements.txt
 
 COPY setup.py /src/setup.py
 COPY hpfeeds /src/hpfeeds
