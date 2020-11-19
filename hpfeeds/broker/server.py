@@ -49,6 +49,7 @@ class Server(object):
         '''
         Called by a connection to push data to all subscribers of a channel
         '''
+        log.debug('Received Publish with source: {} for channel: {} with data: {}'.format(source, chan, data))
         RECEIVE_PUBLISH_COUNT.labels(source.ak, chan).inc()
         RECEIVE_PUBLISH_SIZE.labels(source.ak, chan).observe(len(data))
 

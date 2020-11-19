@@ -137,13 +137,14 @@ class Connection(BaseProtocol):
             self.error("First message was not AUTH")
             self.transport.close()
             return
-
+        log.debug('Received opcode {} with message {}'.format(opcode,message))
         return super().message_received(opcode, message)
 
     def on_auth(self, ident, secret):
         akrow = self.server.get_authkey(ident)
         if not akrow:
             CONNECTION_ERROR.labels(ident, 'invalid-ident').inc()
+            log.debug('Authentication failed for {} due to missing ident'.format(ident))
             self.error(f"Authentication failed for {ident}")
             self.transport.close()
             return
@@ -151,6 +152,7 @@ class Connection(BaseProtocol):
         akhash = hashsecret(self.authrand, akrow["secret"])
         if not akhash == secret:
             CONNECTION_ERROR.labels(ident, 'invalid-secret').inc()
+            log.debug('Authentication failed for {} due to incorrect secret'.format(ident))
             self.error(f"Authentication failed for {ident}")
             self.transport.close()
             return
@@ -173,12 +175,14 @@ class Connection(BaseProtocol):
     def on_publish(self, ident, chan, payload):
         if not ident == self.ak:
             CONNECTION_ERROR.labels(ident, 'ident-mismatch-pub').inc()
+            log.debug('Invalid authkey in message, ident={}'.format(ident))
             self.error(f"Invalid authkey in message, ident={ident}")
             self.transport.close()
             return
 
         if chan not in self.pubchans:
             CONNECTION_ERROR.labels(ident, 'no-pub-permission').inc()
+            log.debug('Authkey not allowed to pub here. ident={}, chan={}'.format(ident,chan))
             self.error(f'Authkey not allowed to pub here. ident={ident}, chan={chan}')
             self.transport.close()
             return
@@ -187,6 +191,7 @@ class Connection(BaseProtocol):
     def on_subscribe(self, ident, chan):
         if chan not in self.subchans:
             CONNECTION_ERROR.labels(ident, 'no-sub-permission').inc()
+            log.debug('Authkey not allowed to sub here. ident={}, chan={}'.format(ident,chan))
             self.error(f'Authkey not allowed to sub here. ident={self.ak}, chan={chan}')
             self.transport.close()
         self.server.subscribe(self, chan)
