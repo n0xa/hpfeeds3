@@ -60,6 +60,7 @@ class Server(object):
         '''
         Subscribe a connection to a channel
         '''
+        log.debug("New subscription request from {} for channel {}".format(source,chan))
         SUBSCRIPTIONS.labels(source.ak, chan).inc()
         self.subscriptions[chan].append(source)
         source.active_subscriptions.add(chan)
@@ -68,6 +69,7 @@ class Server(object):
         '''
         Unsubscribe a connection from a channel
         '''
+        log.debug("New unsubscribe request from {} for channel {}".format(source,chan))
         if chan in source.active_subscriptions:
             source.active_subscriptions.remove(chan)
         if source in self.subscriptions[chan]:
