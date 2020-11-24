@@ -14,7 +14,13 @@ from .prometheus import (
     start_metrics_server,
 )
 
+LOG_FORMAT = '%(asctime)s - %(levelname)s - %(name)s[%(lineno)s][%(filename)s] - %(message)s'
+
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter(LOG_FORMAT))
 log = logging.getLogger("hpfeeds.broker")
+log.setLevel(logging.INFO)
+log.addHandler(handler)
 
 
 class Server(object):
@@ -97,14 +103,9 @@ class Server(object):
         try:
             while True:
                 await asyncio.sleep(10)
-        except asyncio.CancelledError:
+        except asyncio.CancelledError as e:
+            log.debug('Caught asyncio.CancelledError: {}'.format(e))
             server.close()
-
-            # for future in asyncio.as_completed([c.close() for c in list(self.connections)]):
-            #    try:
-            #        await future
-            #    except Exception as e:
-            #        log.exception(e)
 
             log.debug(f'Waiting for {self} to wrap up')
             await server.wait_closed()

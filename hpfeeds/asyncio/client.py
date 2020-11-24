@@ -61,7 +61,7 @@ class ClientSession(object):
     helpers for reading and writing to the broker.
     '''
 
-    log = logging.getLogger('hpfeeds.asyncio.client')
+    log = logging.getLogger('__main__')
 
     def __init__(self, host, port, ident, secret, ssl=None):
         self.host = host
@@ -89,6 +89,7 @@ class ClientSession(object):
                 )
                 return client
             except OSError as e:
+                self.log.debug('Caught OSError: {}'.format(e))
                 pass
 
             await asyncio.sleep(1)

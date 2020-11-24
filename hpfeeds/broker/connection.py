@@ -24,7 +24,7 @@ from .prometheus import (
     CONNECTION_READY,
 )
 
-log = logging.getLogger('hpfeeds.broker.connection')
+log = logging.getLogger('__main__')
 
 
 class MeteredSocket(wrapt.ObjectProxy):
@@ -197,4 +197,5 @@ class Connection(BaseProtocol):
         self.server.subscribe(self, chan)
 
     def on_unsubscribe(self, ident, chan):
+        log.debug('{} requested unsubscribe of channel {}'.format(ident,chan))
         self.server.unsubscribe(self, chan)
