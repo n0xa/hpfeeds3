@@ -24,7 +24,7 @@ from .protocol import (
     readpublish,
 )
 
-logger = logging.getLogger('pyhpfeeds')
+logger = logging.getLogger('__main__')
 
 
 __all__ = ["new", "FeedException"]
@@ -57,11 +57,11 @@ class Client(object):
         except socket.timeout:
             return ""
         except socket.error as e:
-            logger.warn("Socket error: %s", e)
+            logger.warning("Socket error: %s", e)
             raise Disconnect()
 
         if not d:
-            logger.warn("recv() returned empty string")
+            logger.warning("recv() returned empty string")
             raise Disconnect()
 
         return d
@@ -70,10 +70,10 @@ class Client(object):
         try:
             self.s.sendall(data)
         except socket.timeout:
-            logger.warn("Timeout while sending - disconnect.")
+            logger.warning("Timeout while sending - disconnect.")
             raise Disconnect()
         except socket.error as e:
-            logger.warn("Socket error: %s", e)
+            logger.warning("Socket error: %s", e)
             raise Disconnect()
 
         return True
@@ -87,17 +87,17 @@ class Client(object):
                 try:
                     return self.connect()
                 except socket.error as e:
-                    logger.warn(
+                    logger.warning(
                         'Socket error while connecting',
                         exc_info=e,
                     )
                 except FeedException as e:
-                    logger.warn(
+                    logger.warning(
                         'FeedException while connecting',
                         exc_info=e,
                     )
                 except Disconnect as e:
-                    logger.warn('Disconnect while connecting.')
+                    logger.warning('Disconnect while connecting.')
 
                 time.sleep(self.sleepwait)
 
@@ -185,6 +185,7 @@ class Client(object):
 
                 # end run loops if stopped
                 if self.stopped:
+                    logger.debug('self.stopped is set; breaking loop.')
                     break
 
             if not self.stopped and self.reconnect:
