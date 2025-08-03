@@ -1,12 +1,12 @@
-aiohttp==3.4.4; python_version > '3.5'
-aiorun==2018.3.1; python_version > '3.5'
-async-timeout==3.0.1; python_version > '3.5'
-attrs==17.4.0; python_version > '3.5'
-chardet==3.0.4; python_version > '3.5'
-idna==2.7; python_version > '3.5'
-idna-ssl==1.1.0; python_version > '3.5'
-multidict==4.1.0; python_version > '3.5'
-prometheus-client==0.2.0; python_version > '3.5'
-yarl==1.1.1; python_version > '3.5'
-wrapt==1.10.11; python_version > '3.5'
-pymongo; python_version > '3.5'
+aiohttp>=3.10.0,<4.0.0
+aiorun>=2024.8.1
+async-timeout>=4.0.0
+attrs>=24.0.0
+chardet>=5.0.0
+idna>=3.7
+multidict>=6.0.0
+prometheus-client>=0.21.0
+yarl>=1.9.0
+wrapt>=1.16.0
+pymongo>=4.10.0
+dnspython>=2.7.0

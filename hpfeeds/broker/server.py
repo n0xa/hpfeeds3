@@ -41,7 +41,7 @@ class Server(object):
         self.when_started = asyncio.Future()
 
     def _parse_endpoint(self, endpoint):
-        if not endpoint:
+        if not endpoint or endpoint.strip() == "":
             return (None, None)
         elif ':' not in endpoint:
             raise ValueError('Invalid bind addr')
@@ -86,7 +86,8 @@ class Server(object):
     async def serve_forever(self):
         ''' Start handling connections. Await on this to listen forever. '''
 
-        if self.exporter:
+        metrics_server = None
+        if self.exporter and self.exporter != (None, None):
             metrics_server = await start_metrics_server(*self.exporter)
             metrics_server.app.broker = self
 
@@ -110,6 +111,6 @@ class Server(object):
             log.debug(f'Waiting for {self} to wrap up')
             await server.wait_closed()
 
-            if self.exporter:
+            if metrics_server:
                 log.debug('Waiting for stats server to wrap up')
                 await metrics_server.cleanup()
