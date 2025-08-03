@@ -1,0 +1,60 @@
+#!/bin/ksh
+# /etc/rc.d/hpfeeds_broker init file for launching hpfeeds3 broker as a service on OpenBSD
+
+daemon="/opt/chnserver/hpfeeds3/venv/bin/hpfeeds-broker"
+daemon_flags="--bind 127.0.0.1:10000 --auth mongodb --mongo_host localhost --exporter localhost:9431"
+daemon_user="chn"
+daemon_timeout=30
+
+. /etc/rc.d/rc.subr
+
+pexp=".*hpfeeds-broker.*"
+rc_bg=YES
+rc_reload=NO
+
+rc_pre() {
+	# Check for MongoDB connectivity
+	if ! pgrep mongod > /dev/null; then
+		echo "MongoDB is not running. Please start mongod first:"
+		echo "  rcctl start mongod"
+		return 1
+	fi
+	
+	# Check for virtual environment
+	if [ ! -f /opt/chnserver/hpfeeds3/venv/bin/hpfeeds-broker ]; then
+		echo "hpfeeds3 virtual environment not found. Please install it first:"
+		echo "  cd /opt/chnserver/hpfeeds3"
+		echo "  python3 -m venv venv"
+		echo "  source venv/bin/activate"
+		echo "  pip install -e ."
+		return 1
+	fi
+	
+	# Check for hpfeeds auth database setup (using mongosh if available, fallback to mongo)
+	if command -v mongosh > /dev/null 2>&1; then
+		mongo_test=$(mongosh --quiet --eval "db.auth_key.count()" hpfeeds 2>/dev/null || echo "0")
+	else
+		mongo_test=$(mongo --quiet --eval "db.auth_key.count()" hpfeeds 2>/dev/null || echo "0")
+	fi
+	
+	if [ "$mongo_test" = "0" ]; then
+		echo "Warning: No hpfeeds authentication configured in MongoDB"
+		echo "Consider adding auth keys to hpfeeds.auth_key collection"
+	fi
+	
+	# Ensure log directory exists
+	mkdir -p /opt/chnserver/hpfeeds3/logs
+	chown chn:chn /opt/chnserver/hpfeeds3/logs
+}
+
+rc_post() {
+	# Wait for service to be ready
+	sleep 2
+	if nc -z 127.0.0.1 10000; then
+		echo "hpfeeds3 broker started successfully on port 10000"
+	else
+		echo "Warning: hpfeeds3 broker may not be listening on port 10000"
+	fi
+}
+
+rc_cmd $1
