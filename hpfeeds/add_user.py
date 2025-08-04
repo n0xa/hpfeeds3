@@ -22,8 +22,8 @@ def create_user(host, port, owner, ident, secret, publish, subscribe):
     }
 
     client = pymongo.MongoClient(host=host, port=port)
-    res = client.hpfeeds.auth_key.update({"identifier": ident}, {"$set": rec}, upsert=True)
-    client.fsync()
+    res = client.hpfeeds.auth_key.update_one({"identifier": ident}, {"$set": rec}, upsert=True)
+    # fsync() was removed in newer PyMongo versions - not needed with modern MongoDB
     client.close()
     return res, rec
 
@@ -54,7 +54,7 @@ def main():
     res, rec = create_user(host=host, port=port, owner=owner, ident=ident,
                            secret=secret, publish=publish, subscribe=subscribe)
 
-    if res['updatedExisting']:
+    if res.matched_count > 0:
         print("updated %s" % rec)
     else:
         print("inserted %s" % rec)
