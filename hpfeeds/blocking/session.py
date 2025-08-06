@@ -18,7 +18,7 @@ class Protocol(ClientProtocol):
         super(Protocol, self).__init__(session.ident, session.secret)
 
     def on_publish(self, ident, channel, payload):
-        self.session.read_queue.put_nowait((ident, channel, payload))
+        self.session.read_queue.put((ident, channel, payload), block=False)
 
 
 class ClientSession(object):
