@@ -26,7 +26,7 @@ class Reactor(object):
         self._outbox = queue.Queue()
 
     def write(self, data):
-        self._outbox.put_nowait(data)
+        self._outbox.put(data, block=False)
 
     def close(self):
         self.sock.close()
@@ -107,7 +107,7 @@ class Reactor(object):
         logging.debug('_outbox_read_ready')
 
         try:
-            self._buffer += self._outbox.get_nowait()
+            self._buffer += self._outbox.get(block=False)
         except socket.error as e:
             # Interupted by.. interupt, try again
             if e.args[0] == errno.EAGAIN:
