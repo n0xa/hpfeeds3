@@ -38,8 +38,26 @@ class Queue(queue.Queue, object):
 
     def put(self, item, block=True):
         super(Queue, self).put(item, block)
-        self._putsocket.send(b'x')
+        try:
+            self._putsocket.send(b'x')
+        except socket.error:
+            # Socket might be closed or have issues, but put operation succeeded
+            pass
 
     def get(self, block=True):
-        self._getsocket.recv(1)
+        if block:
+            # For blocking operations, we need to wait for the signal first
+            try:
+                self._getsocket.recv(1)
+            except socket.error:
+                # Socket might be closed, fall back to normal queue behavior
+                pass
+        else:
+            # For non-blocking operations, check if data is available
+            try:
+                self._getsocket.recv(1)
+            except socket.error:
+                # No signal available, so no data in queue
+                raise queue.Empty()
+        
         return super(Queue, self).get(block)

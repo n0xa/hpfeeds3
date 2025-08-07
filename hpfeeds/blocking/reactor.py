@@ -26,7 +26,9 @@ class Reactor(object):
         self._outbox = queue.Queue()
 
     def write(self, data):
-        self._outbox.put(data, block=False)
+        # Use blocking put to ensure data is queued properly
+        # The socket signaling will notify the select loop
+        self._outbox.put(data, block=True)
 
     def close(self):
         self.sock.close()
@@ -107,6 +109,8 @@ class Reactor(object):
         logging.debug('_outbox_read_ready')
 
         try:
+            # Use non-blocking get here since we're in the select loop
+            # and we know data should be available due to socket signaling
             self._buffer += self._outbox.get(block=False)
         except socket.error as e:
             # Interupted by.. interupt, try again
@@ -117,13 +121,14 @@ class Reactor(object):
             if e.args[0] == errno.EWOULDBLOCK:
                 return True
         except queue.Empty:
-            # Someone lied - there is no data really
+            # Socket signaled but queue is empty - this can happen in race conditions
             # Go to sleep and try again later
             return True
 
         # If we were blocked waiting for something to land in queue there is
         # good chance the write socket is ready. Try to send.
         self._socket_write_ready()
+        return True
 
     def _socket_write_ready(self):
         logging.debug('_socket_write_ready')
