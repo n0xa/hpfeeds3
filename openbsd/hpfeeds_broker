@@ -2,7 +2,7 @@
 # /etc/rc.d/hpfeeds_broker init file for launching hpfeeds3 broker as a service on OpenBSD
 
 daemon="/opt/chnserver/hpfeeds3/venv/bin/hpfeeds-broker"
-daemon_flags="--bind 127.0.0.1:10000 --auth mongodb --mongo_host localhost --exporter localhost:9431"
+daemon_flags="--bind 0.0.0.0:10000 --auth mongodb --mongo_host localhost --exporter localhost:9431"
 daemon_user="chn"
 daemon_timeout=30
 
