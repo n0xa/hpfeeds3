@@ -34,9 +34,13 @@ class MeteredSocket(wrapt.ObjectProxy):
         self._self_ak = ak
 
     def send(self, buffer):
-        n = self.__wrapped__.send(buffer)
-        CLIENT_SEND_BUFFER_DRAIN.labels(self._self_ak).inc(n)
-        return n
+        try:
+            n = self.__wrapped__.send(buffer)
+            CLIENT_SEND_BUFFER_DRAIN.labels(self._self_ak).inc(n)
+            return n
+        except Exception as e:
+            log.warning(f"Socket send failed for client {self._self_ak}: {type(e).__name__}: {e}")
+            raise
 
 
 class MeteredSSLObject(wrapt.ObjectProxy):
@@ -46,9 +50,13 @@ class MeteredSSLObject(wrapt.ObjectProxy):
         self._self_ak = ak
 
     def write(self, buffer):
-        n = self.__wrapped__.write(buffer)
-        CLIENT_SEND_BUFFER_DRAIN.labels(self._self_ak).inc(n)
-        return n
+        try:
+            n = self.__wrapped__.write(buffer)
+            CLIENT_SEND_BUFFER_DRAIN.labels(self._self_ak).inc(n)
+            return n
+        except Exception as e:
+            log.warning(f"SSL write failed for client {self._self_ak}: {type(e).__name__}: {e}")
+            raise
 
 
 class Connection(BaseProtocol):
