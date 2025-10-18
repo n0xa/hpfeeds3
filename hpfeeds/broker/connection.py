@@ -38,8 +38,14 @@ class MeteredSocket(wrapt.ObjectProxy):
             n = self.__wrapped__.send(buffer)
             CLIENT_SEND_BUFFER_DRAIN.labels(self._self_ak).inc(n)
             return n
+        except (BrokenPipeError, ConnectionResetError, OSError) as e:
+            # These are expected when clients disconnect - don't spam logs
+            # The connection_lost handler will clean up
+            log.debug(f"Socket send failed for client {self._self_ak}: {type(e).__name__}")
+            raise
         except Exception as e:
-            log.warning(f"Socket send failed for client {self._self_ak}: {type(e).__name__}: {e}")
+            # Log unexpected errors at warning level
+            log.warning(f"Unexpected socket error for client {self._self_ak}: {type(e).__name__}: {e}")
             raise
 
 
@@ -54,8 +60,14 @@ class MeteredSSLObject(wrapt.ObjectProxy):
             n = self.__wrapped__.write(buffer)
             CLIENT_SEND_BUFFER_DRAIN.labels(self._self_ak).inc(n)
             return n
+        except (BrokenPipeError, ConnectionResetError, OSError) as e:
+            # These are expected when clients disconnect - don't spam logs
+            # The connection_lost handler will clean up
+            log.debug(f"SSL write failed for client {self._self_ak}: {type(e).__name__}")
+            raise
         except Exception as e:
-            log.warning(f"SSL write failed for client {self._self_ak}: {type(e).__name__}: {e}")
+            # Log unexpected errors at warning level
+            log.warning(f"Unexpected SSL error for client {self._self_ak}: {type(e).__name__}: {e}")
             raise
 
 
