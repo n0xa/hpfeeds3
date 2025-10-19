@@ -86,6 +86,8 @@ class Connection(BaseProtocol):
         self.authrand = os.urandom(4)
 
         self._deadline_timer = None
+        self.auth_in_progress = False
+        self.pending_messages = []
 
         super().__init__()
 
@@ -152,45 +154,93 @@ class Connection(BaseProtocol):
         return super().data_received(data)
 
     def message_received(self, opcode, message):
-        if not self.uid and opcode != OP_AUTH:
-            CONNECTION_ERROR.labels('', 'invalid-first-message').inc()
-            self.error("First message was not AUTH")
-            self.transport.close()
-            return
+        # If we haven't authenticated yet
+        if not self.uid:
+            # First message must be AUTH
+            if opcode != OP_AUTH and not self.auth_in_progress:
+                CONNECTION_ERROR.labels('', 'invalid-first-message').inc()
+                self.error("First message was not AUTH")
+                self.transport.close()
+                return
+
+            # Queue messages received during async auth processing
+            if self.auth_in_progress and opcode != OP_AUTH:
+                log.debug(f'Queueing opcode {opcode} during auth processing')
+                self.pending_messages.append((opcode, message))
+                return
+
         log.debug('Received opcode {} with message {}'.format(opcode,message))
+
+        # Handle AUTH specially since it's async
+        if opcode == OP_AUTH:
+            from hpfeeds.protocol import readauth
+            self.auth_in_progress = True
+            asyncio.create_task(self.on_auth(*readauth(message)))
+            return
+
         return super().message_received(opcode, message)
 
-    def on_auth(self, ident, secret):
-        akrow = self.server.get_authkey(ident)
-        if not akrow:
-            CONNECTION_ERROR.labels(ident, 'invalid-ident').inc()
-            log.debug('Authentication failed for {} due to missing ident'.format(ident))
-            self.error(f"Authentication failed for {ident}")
-            self.transport.close()
-            return
+    async def on_auth(self, ident, secret):
+        try:
+            # Check if transport is still valid
+            if not self.transport or self.transport.is_closing():
+                log.debug(f'Transport already closing for {ident}, skipping auth')
+                self.auth_in_progress = False
+                self.pending_messages.clear()
+                return
 
-        akhash = hashsecret(self.authrand, akrow["secret"])
-        if not akhash == secret:
-            CONNECTION_ERROR.labels(ident, 'invalid-secret').inc()
-            log.debug('Authentication failed for {} due to incorrect secret'.format(ident))
-            self.error(f"Authentication failed for {ident}")
-            self.transport.close()
-            return
+            akrow = await self.server.get_authkey(ident)
+            if not akrow:
+                CONNECTION_ERROR.labels(ident, 'invalid-ident').inc()
+                log.debug('Authentication failed for {} due to missing ident'.format(ident))
+                self.error(f"Authentication failed for {ident}")
+                self.auth_in_progress = False
+                self.pending_messages.clear()
+                self.transport.close()
+                return
 
-        self.ak = ident
-        self.uid = akrow["owner"]
-        self.pubchans = akrow.get("pubchans", [])
-        self.subchans = akrow.get("subchans", [])
+            akhash = hashsecret(self.authrand, akrow["secret"])
+            if not akhash == secret:
+                CONNECTION_ERROR.labels(ident, 'invalid-secret').inc()
+                log.debug('Authentication failed for {} due to incorrect secret'.format(ident))
+                self.error(f"Authentication failed for {ident}")
+                self.auth_in_progress = False
+                self.pending_messages.clear()
+                self.transport.close()
+                return
 
-        if hasattr(self.transport, '_sock'):
-            self.transport._sock = MeteredSocket(self.transport._sock, self.ak)
-        elif hasattr(self.transport, '_ssl_protocol'):
-            self.transport._ssl_protocol._sslpipe._sslobj = MeteredSSLObject(self.transport._ssl_protocol._sslpipe._sslobj, self.ak)
+            self.ak = ident
+            self.uid = akrow["owner"]
+            self.pubchans = akrow.get("pubchans", [])
+            self.subchans = akrow.get("subchans", [])
 
-        high = SIZES[OP_PUBLISH] * 50
-        self.transport.set_write_buffer_limits(high=high)
+            # Check transport is still valid before accessing socket
+            if hasattr(self.transport, '_sock') and self.transport._sock:
+                self.transport._sock = MeteredSocket(self.transport._sock, self.ak)
+            elif hasattr(self.transport, '_ssl_protocol') and self.transport._ssl_protocol:
+                if hasattr(self.transport._ssl_protocol, '_sslpipe') and self.transport._ssl_protocol._sslpipe:
+                    if hasattr(self.transport._ssl_protocol._sslpipe, '_sslobj'):
+                        self.transport._ssl_protocol._sslpipe._sslobj = MeteredSSLObject(self.transport._ssl_protocol._sslpipe._sslobj, self.ak)
 
-        CONNECTION_READY.labels(ident).inc()
+            high = SIZES[OP_PUBLISH] * 50
+            self.transport.set_write_buffer_limits(high=high)
+
+            CONNECTION_READY.labels(ident).inc()
+
+            # Auth successful - process any messages that arrived during auth
+            self.auth_in_progress = False
+            if self.pending_messages:
+                log.debug(f'Processing {len(self.pending_messages)} pending messages')
+                for opcode, message in self.pending_messages:
+                    super(Connection, self).message_received(opcode, message)
+                self.pending_messages.clear()
+
+        except Exception as e:
+            log.error(f'Error during async auth for {ident}: {e}')
+            self.auth_in_progress = False
+            self.pending_messages.clear()
+            if self.transport and not self.transport.is_closing():
+                self.transport.close()
 
     def on_publish(self, ident, chan, payload):
         if not ident == self.ak:

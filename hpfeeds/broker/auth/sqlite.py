@@ -37,7 +37,7 @@ class Authenticator(object):
     def close(self):
         self.sql.close()
 
-    def get_authkey(self, ident):
+    async def get_authkey(self, ident):
         c = self.sql.cursor()
         try:
             c.execute("select * from authkeys where ident=?", (ident,))
