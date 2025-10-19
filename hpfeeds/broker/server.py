@@ -48,8 +48,8 @@ class Server(object):
         else:
             return endpoint.split(':', 1)
 
-    def get_authkey(self, identifier):
-        return self.auth.get_authkey(identifier)
+    async def get_authkey(self, identifier):
+        return await self.auth.get_authkey(identifier)
 
     def publish(self, source, chan, data):
         '''

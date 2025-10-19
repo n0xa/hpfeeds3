@@ -28,7 +28,7 @@ class Authenticator(object):
     def close(self):
         pass
 
-    def get_authkey(self, ident):
+    async def get_authkey(self, ident):
         secret = get_key(ident, 'secret')
         if not secret:
             return None
