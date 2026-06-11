@@ -1,0 +1,14 @@
+[Unit]
+Description=Check hpfeeds broker connectivity
+After=network.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/hpfeeds-watchdog.env
+WorkingDirectory=/home/chn/chn-quickstart
+ExecStart=/home/chn/chn-quickstart/check_hpfeeds.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

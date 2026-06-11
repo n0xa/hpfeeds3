@@ -1,0 +1,11 @@
+[Unit]
+Description=Check hpfeeds broker connectivity every 15 minutes
+Requires=hpfeeds-check.service
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=15min
+Unit=hpfeeds-check.service
+
+[Install]
+WantedBy=timers.target
