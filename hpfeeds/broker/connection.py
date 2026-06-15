@@ -5,12 +5,13 @@ import asyncio
 import logging
 import os
 import socket
+import struct
 import sys
 
 import wrapt
 
 from hpfeeds.asyncio.protocol import BaseProtocol
-from hpfeeds.protocol import OP_AUTH, OP_PUBLISH, SIZES, hashsecret
+from hpfeeds.protocol import OP_AUTH, OP_PUBLISH, SIZES, hashsecret, readauth
 
 from .prometheus import (
     CLIENT_CONNECTIONS,
@@ -173,9 +174,15 @@ class Connection(BaseProtocol):
 
         # Handle AUTH specially since it's async
         if opcode == OP_AUTH:
-            from hpfeeds.protocol import readauth
             self.auth_in_progress = True
-            asyncio.create_task(self.on_auth(*readauth(message)))
+            try:
+                ident, secret = readauth(message)
+            except (TypeError, ValueError, struct.error):
+                CONNECTION_ERROR.labels('', 'malformed-auth').inc()
+                self.error("Malformed AUTH message")
+                self.transport.close()
+                return
+            asyncio.create_task(self.on_auth(ident, secret))
             return
 
         return super().message_received(opcode, message)
